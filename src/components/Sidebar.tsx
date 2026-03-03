@@ -1,61 +1,244 @@
 import { Layout, Menu } from "antd";
 import {
   DashboardOutlined,
-  UserOutlined,
   SettingOutlined,
   ShoppingCartOutlined,
-  FileTextOutlined,
-  TeamOutlined,
-  BarChartOutlined,
+  SafetyOutlined,
+  AppstoreOutlined,
+  ShopOutlined,
+  InboxOutlined,
+  LogoutOutlined,
+  DollarOutlined,
+  ShoppingOutlined,
 } from "@ant-design/icons";
 import { useNavigate, useLocation } from "react-router-dom";
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import type { CSSProperties } from "react";
+import type { ItemType } from "antd/es/menu/interface";
+import { useAuth } from "../contexts/AuthContext";
 
 const { Sider } = Layout;
 
 export default function Sidebar() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
+  const [openKeys, setOpenKeys] = useState<string[]>([]);
 
-  const menuItems = [
+  // Generate user info from context
+  const userInfo = useMemo(() => {
+    if (!user) {
+      return {
+        userName: "User",
+        userRole: "No Role",
+        userInitials: "U",
+      };
+    }
+
+    const name = user.name || "User";
+    const roles = user.roles || [];
+
+    // Get first role name and format it
+    let roleDisplay = "No Role";
+    if (roles.length > 0) {
+      roleDisplay = roles[0]
+        .split("_")
+        .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(" ");
+    }
+
+    // Generate initials
+    const nameParts = name.split(" ");
+    const initials =
+      nameParts.length >= 2
+        ? (nameParts[0].charAt(0) + nameParts[nameParts.length - 1].charAt(0)).toUpperCase()
+        : name.charAt(0).toUpperCase();
+
+    return {
+      userName: name,
+      userRole: roleDisplay,
+      userInitials: initials,
+    };
+  }, [user]);
+
+  // Define all menu items with their required permissions
+  const allMenuItems: ItemType[] = [
     {
       key: "/",
       icon: <DashboardOutlined />,
       label: "Dashboard",
+      permission: "dashboard.view",
     },
     {
-      key: "/orders",
+      key: "user-management",
+      icon: <SafetyOutlined />,
+      label: "User Management",
+      children: [
+        {
+          key: "/user-management/users",
+          label: "User",
+          permission: "users.view",
+        },
+        {
+          key: "/user-management/roles",
+          label: "Role",
+          permission: "roles.view",
+        },
+        {
+          key: "/user-management/permissions",
+          label: "Permission",
+          permission: "permissions.view",
+        },
+      ],
+    },
+    {
+      key: "product-management",
+      icon: <AppstoreOutlined />,
+      label: "Product Management",
+      children: [
+        {
+          key: "/product-management/categories",
+          label: "Category",
+          permission: "categories.view",
+        },
+        {
+          key: "/product-management/brands",
+          label: "Merk",
+          permission: "brands.view",
+        },
+        {
+          key: "/product-management/suppliers",
+          label: "Supplier",
+          permission: "suppliers.view",
+        },
+        {
+          key: "/product-management/customers",
+          label: "Customer",
+          permission: "customers.view",
+        },
+        {
+          key: "/product-management/products",
+          label: "Product",
+          permission: "products.view",
+        },
+      ],
+    },
+    {
+      key: "purchase",
       icon: <ShoppingCartOutlined />,
-      label: "Orders",
+      label: "Purchase",
+      children: [
+        {
+          key: "/purchase/orders",
+          label: "Purchase Order",
+          permission: "purchases.view",
+        },
+        {
+          key: "/purchase/invoices",
+          label: "Purchase Invoice",
+          permission: "purchase_invoices.view",
+        },
+        {
+          key: "/purchase/reports",
+          label: "Report",
+          permission: "purchases.view",
+        },
+      ],
     },
     {
-      key: "/products",
-      icon: <FileTextOutlined />,
-      label: "Products",
+      key: "wholesale-sales",
+      icon: <DollarOutlined />,
+      label: "Wholesale Sales",
+      children: [
+        {
+          key: "/wholesale-sales/orders",
+          label: "Wholesale Order",
+          permission: "wholesale.view",
+        },
+      ],
     },
     {
-      key: "/customers",
-      icon: <TeamOutlined />,
-      label: "Customers",
+      key: "retail-sales",
+      icon: <ShoppingOutlined />,
+      label: "Retail Sales",
+      children: [
+        {
+          key: "/retail-sales/orders",
+          label: "Retail Order",
+          permission: "retail.view",
+        },
+      ],
     },
     {
-      key: "/analytics",
-      icon: <BarChartOutlined />,
-      label: "Analytics",
+      key: "in-stock",
+      icon: <InboxOutlined />,
+      label: "In Stock",
+      children: [
+        {
+          key: "/in-stock/tap-in",
+          label: "Tap In",
+          permission: "stock_in.view",
+        },
+      ],
     },
     {
-      key: "/users",
-      icon: <UserOutlined />,
-      label: "Users",
+      key: "out-stock",
+      icon: <LogoutOutlined />,
+      label: "Out Stock",
+      children: [
+        {
+          key: "/out-stock/tap-out",
+          label: "Tap Out",
+          permission: "stock_out.view",
+        },
+      ],
     },
     {
       key: "/settings",
       icon: <SettingOutlined />,
       label: "Settings",
+      permission: "settings.view",
     },
   ];
+
+  // Filter menu items based on user permissions
+  const filterMenuByPermission = (items: ItemType[]): ItemType[] => {
+    if (!user || !user.permissions) {
+      return [];
+    }
+
+    return items
+      .map((item) => {
+        // Check if item has custom permission property
+        const typedItem = item as any;
+        if (typedItem.permission && !user.permissions.includes(typedItem.permission)) {
+          return null;
+        }
+
+        // If item has children, filter them too
+        if (typedItem.children && Array.isArray(typedItem.children)) {
+          const filteredChildren = filterMenuByPermission(typedItem.children);
+
+          // If no children remain after filtering, hide the parent menu
+          if (filteredChildren.length === 0) {
+            return null;
+          }
+
+          return {
+            ...item,
+            children: filteredChildren,
+          };
+        }
+
+        return item;
+      })
+      .filter((item): item is ItemType => item !== null);
+  };
+
+  const menuItems = useMemo(() => {
+    return filterMenuByPermission(allMenuItems);
+  }, [user]);
 
   return (
     <Sider
@@ -86,17 +269,17 @@ export default function Sidebar() {
         {!collapsed && (
           <>
             <div style={styles.avatar}>
-              <span style={styles.avatarText}>AD</span>
+              <span style={styles.avatarText}>{userInfo.userInitials}</span>
             </div>
             <div style={styles.userDetails}>
-              <div style={styles.userName}>Admin User</div>
-              <div style={styles.userRole}>Administrator</div>
+              <div style={styles.userName}>{userInfo.userName}</div>
+              <div style={styles.userRole}>{userInfo.userRole}</div>
             </div>
           </>
         )}
         {collapsed && (
           <div style={styles.avatarSmall}>
-            <span style={styles.avatarTextSmall}>AD</span>
+            <span style={styles.avatarTextSmall}>{userInfo.userInitials}</span>
           </div>
         )}
       </div>
@@ -104,6 +287,8 @@ export default function Sidebar() {
       <Menu
         mode="inline"
         selectedKeys={[location.pathname]}
+        openKeys={openKeys}
+        onOpenChange={setOpenKeys}
         onClick={(e) => navigate(e.key)}
         items={menuItems}
         style={{

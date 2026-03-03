@@ -15,7 +15,7 @@ import {
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../services/api";
-import useAuth from "../hooks/useAuth";
+import { useAuth } from "../contexts/AuthContext";
 
 const { Title, Text } = Typography;
 
@@ -29,8 +29,10 @@ export default function Login() {
     try {
       setLoading(true);
       const res = await api.post("/login", values);
-      localStorage.setItem("token", res.data.data.token);
-      setUser(res.data.data.user);
+      const { token, user } = res.data.data;
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(user));
+      setUser(user);
       message.success("Login berhasil");
       navigate("/");
     } catch (err: any) {

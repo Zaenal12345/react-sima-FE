@@ -8,7 +8,7 @@ import {
 } from "@ant-design/icons";
 import type { MenuProps } from "antd";
 import type { CSSProperties } from "react";
-import useAuth from "../hooks/useAuth";
+import { useAuth } from "../contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { logoutRequest } from "../services/auth.service";
 
@@ -17,6 +17,16 @@ const { Header: AntHeader } = Layout;
 export default function Header() {
   const {logout,user} = useAuth();
   const navigate = useNavigate();
+
+  // Generate user initials from name
+  const getUserInitials = (name: string | undefined) => {
+    if (!name) return "U";
+    const nameParts = name.split(" ");
+    if (nameParts.length >= 2) {
+      return (nameParts[0].charAt(0) + nameParts[nameParts.length - 1].charAt(0)).toUpperCase();
+    }
+    return name.charAt(0).toUpperCase();
+  };
 
   const confirmLogout = () => {
     Modal.confirm({
@@ -94,11 +104,12 @@ export default function Header() {
               <Avatar
                 size={40}
                 style={styles.avatar}
-                icon={<UserOutlined />}
-              />
+              >
+                {getUserInitials(user?.name)}
+              </Avatar>
               <div style={styles.userInfo}>
-                <div style={styles.userName}>Admin User</div>
-                <div style={styles.userEmail}>admin@sima.com</div>
+                <div style={styles.userName}>{user?.name || "User"}</div>
+                <div style={styles.userEmail}>{user?.email || "user@example.com"}</div>
               </div>
             </div>
           </Dropdown>
